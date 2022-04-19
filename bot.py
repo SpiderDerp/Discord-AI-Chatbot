@@ -43,7 +43,7 @@ async def on_message(message):
             if message.content not in data["words"]:
             #adds message to json
                 data["words"].append(message.content)
-                trainer.train(data["words"]) #trains bot
+                #trains bot
 
         with open('trainingwords.json', 'w') as f:
             json.dump(data, f)
@@ -52,6 +52,11 @@ async def on_message(message):
 
         
 
+@tasks.loop(minutes= 5.0)
+async def train():
+    with open('trainingwords.json') as f:
+        data = json.load(f)
+        trainer.train(data["words"])
 
 #on server join make a channel called talk-with-chatbot
 @bot.event
@@ -66,6 +71,7 @@ async def on_ready():
     print(bot.user.id)
     print('------')
     game = nextcord.Game("status")
+    train.start()
     await bot.change_presence(status=nextcord.Status.online, activity=game)
 
 bot.run(TOKEN) 
