@@ -7,6 +7,7 @@ import asyncio
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer, ListTrainer
 import json
+import threading
 
 
 TOKEN = "token" #insert token here
@@ -24,9 +25,11 @@ trainer = ChatterBotCorpusTrainer(chatbot)
 
 # Train the chatbot based on the english corpus
 for i in range(5):
-    trainer.train("chatterbot.corpus.english")
+    trainer.train("chatterbot.corpus.english")  
 
 trainer = ListTrainer(chatbot)
+
+threads = []
 
 @bot.event
 async def on_message(message):
@@ -48,9 +51,15 @@ async def on_message(message):
         with open('trainingwords.json', 'w') as f:
             json.dump(data, f)
         
-        await channel.send(chatbot.get_response(message.content))
+        while len(threads) < 10:
+            thread = threading.Thread(target = send_response, args = (message,))
+            threads.append(thread)
+            thread.start()
+            thread.join()
 
-        
+async def send_response(message):
+    channel = message.channel
+    await channel.send(chatbot.get_response(message.content))        
 
 @tasks.loop(minutes= 5.0)
 async def train():
@@ -71,7 +80,7 @@ async def on_ready():
     print(bot.user.id)
     print('------')
     game = nextcord.Game("status")
-    train.start()
+    train.start()   
     await bot.change_presence(status=nextcord.Status.online, activity=game)
 
 bot.run(TOKEN) 
