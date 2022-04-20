@@ -7,6 +7,7 @@ import asyncio
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer, ListTrainer
 import json
+import threading
 
 
 TOKEN = "token" #insert token here
@@ -27,6 +28,7 @@ for i in range(5):
     trainer.train("chatterbot.corpus.english")
 
 trainer = ListTrainer(chatbot)
+threads = []
 
 @bot.event
 async def on_message(message):
@@ -43,14 +45,28 @@ async def on_message(message):
             if message.content not in data["words"]:
             #adds message to json
                 data["words"].append(message.content)
-                #trains bot
+                
 
         with open('trainingwords.json', 'w') as f:
             json.dump(data, f)
         
-        await channel.send(chatbot.get_response(message.content))
+        if len(threads) < 5:
+            thread = threading.Thread(target= thr, args = (message,))
+            thread.start()
+            threads.append(thread)
+            thread.join()
+    
 
         
+def thr(message):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(send_response(message))
+    loop.close()
+
+async def send_response(message):
+    channel = message.channel
+    await channel.send(chatbot.get_response(message.content))
 
 @tasks.loop(minutes= 5.0)
 async def train():
